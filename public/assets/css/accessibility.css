@@ -1,0 +1,117 @@
+/* Accessibility Improvements for ShopService */
+
+:root {
+    --acc-font-size-base: 1.25rem;
+    /* Increased from 1.1rem */
+    --acc-font-size-lg: 1.5rem;
+    /* Increased from 1.25rem */
+    --acc-primary-color: #0d6efd;
+    --acc-primary-dark: #0a58ca;
+    --acc-text-color: #000;
+    /* Pure black for max contrast */
+    --acc-bg-light: #f8f9fa;
+    --acc-border-color: #6c757d;
+    /* Darker default border */
+}
+
+body {
+    font-size: var(--acc-font-size-base);
+    color: var(--acc-text-color);
+}
+
+.form-label {
+    font-weight: 700;
+    color: #000;
+    font-size: var(--acc-font-size-lg);
+    margin-bottom: 0.5rem;
+}
+
+.form-control,
+.form-select {
+    font-size: var(--acc-font-size-base);
+    border: 2px solid var(--acc-border-color);
+    /* Thicker border */
+    padding: 0.75rem 1rem;
+    /* Larger padding */
+    border-radius: 8px;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--acc-primary-color);
+    box-shadow: 0 0 0 0.3rem rgba(13, 110, 253, 0.25);
+    /* Larger focus ring */
+}
+
+.btn-lg-acc {
+    font-size: 1.3rem;
+    padding: 1rem 2rem;
+    /* Much larger buttons */
+    border-radius: 10px;
+    font-weight: bold;
+}
+
+/* Sidebar Accessibility */
+#sidebar-wrapper .list-group-item {
+    font-size: 1.15rem;
+    padding: 1rem 1.25rem;
+}
+
+#sidebar-wrapper .list-group-item i {
+    font-size: 1.3rem;
+}
+
+/* Live Preview Split */
+.preview-container {
+    background: #525659;
+    /* PDF viewer background look */
+    padding: 20px;
+    border-radius: 5px;
+    height: 100%;
+    min-height: 600px;
+    overflow-y: auto;
+}
+
+.preview-paper {
+    background: white;
+    width: 100%;
+    min-height: 800px;
+    padding: 40px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    margin: 0 auto;
+    font-family: "Helvetica", sans-serif;
+    font-size: 11pt;
+    line-height: 1.3;
+    color: #000;
+}
+
+.preview-paper .header {
+    margin-bottom: 20px;
+}
+
+.preview-paper .section-title {
+    text-decoration: underline;
+    font-weight: bold;
+    margin-top: 15px;
+    margin-bottom: 5px;
+}
+
+.preview-paper .content-block {
+    margin-bottom: 15px;
+}
+
+.preview-paper .highlight {
+    background-color: yellow;
+}
+
+/* Responsive adjustments */
+@media (max-width: 991px) {
+    .preview-container {
+        display: none;
+        /* Hide on mobile/tablet default, maybe toggle? */
+    }
+
+    .preview-mobile-toggle {
+        display: block;
+    }
+}
