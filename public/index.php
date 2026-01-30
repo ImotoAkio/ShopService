@@ -46,8 +46,18 @@ $host = $_SERVER['HTTP_HOST'];
 $appRoot = $scriptName;
 $baseUrl = $protocol . $host . $appRoot;
 
-define('BASE_URL', $baseUrl);
-define('ASSET_URL', $baseUrl . '/public');
+// Use Environment Variables if available (Fix for Proxy/Docker)
+if (getenv('BASE_URL')) {
+    define('BASE_URL', rtrim(getenv('BASE_URL'), '/'));
+} else {
+    define('BASE_URL', $baseUrl);
+}
+
+if (getenv('ASSET_URL')) {
+    define('ASSET_URL', rtrim(getenv('ASSET_URL'), '/'));
+} else {
+    define('ASSET_URL', $baseUrl . '/public');
+}
 
 
 // Define Routes
