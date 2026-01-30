@@ -6,9 +6,6 @@ class ImportService
 {
     /**
      * Extrai texto bruto de um arquivo .docx
-     * 
-     * @param string $filePath Caminho absoluto para o arquivo docx
-     * @return string|false Texto extraído ou false se falhar
      */
     public function extractTextFromDocx($filePath)
     {
@@ -18,7 +15,6 @@ class ImportService
 
         $zip = new \ZipArchive;
         if ($zip->open($filePath) === TRUE) {
-            // Tenta ler o xml principal do word
             $xmlIndex = $zip->locateName('word/document.xml');
             if ($xmlIndex === false) {
                 $zip->close();
@@ -32,14 +28,8 @@ class ImportService
                 return false;
             }
 
-            // Limpeza simples de XML para extrair texto
-            // Remove tags XML e deixa espaços
             $text = strip_tags($xmlData);
-
-            // Decodifica entidades HTML se houver
             $text = html_entity_decode($text, ENT_QUOTES, 'UTF-8');
-
-            // Limpeza de espaços excessivos
             $text = preg_replace('/\s+/', ' ', $text);
 
             return trim($text);
@@ -50,14 +40,9 @@ class ImportService
 
     /**
      * Envia texto para AI (Gemini ou OpenAI) estruturar
-     * 
-     * @param string $text Texto bruto do orçamento
-     * @param string $apiKey Chave da API
-     * @return array|false Array com dados estruturados ou false/erro
      */
     public function analyzeWithAI($text, $apiKey)
     {
-        // Detect Provider
         if (strpos($apiKey, 'sk-') === 0) {
             return $this->analyzeWithOpenAI($text, $apiKey);
         } else {
@@ -115,7 +100,6 @@ class ImportService
     private function analyzeWithGemini($text, $apiKey)
     {
         $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" . $apiKey;
-
         $systemPrompt = "Instrução: \"Você é um assistente que estrutura dados de orçamentos brutos. Extraia para JSON conforme schema: { cliente: { name, documento, cnpj, email, phone, address, responsavel }, orcamentos: [ { assunto, status, total, data_orcamento, servico_descricao, garantia, validade, forma_pagamento, observacoes, itens: [ { description, quantity, unit_price, total_price } ] } ] }. Responda APENAS o JSON. Sem markdown.\"";
 
         $payload = [
@@ -152,36 +136,25 @@ class ImportService
 
         $jsonResp = json_decode($response, true);
 
-        // Extrai o texto da resposta
         if (isset($jsonResp['candidates'][0]['content']['parts'][0]['text'])) {
             $rawContent = $jsonResp['candidates'][0]['content']['parts'][0]['text'];
-
-            // Limpa Markdown se gemini mandar ```json ... ```
             $rawContent = preg_replace('/^```json\s*/i', '', $rawContent);
-            $rawContent = preg_replace('/^```\s*/i', '', $rawContent); // caso mande so ```
+            $rawContent = preg_replace('/^```\s*/i', '', $rawContent);
             $rawContent = preg_replace('/\s*```$/', '', $rawContent);
-
             return json_decode($rawContent, true);
         }
 
         return ['error' => 'Formato de resposta inesperado da API'];
     }
 
-    /**
-     * Tenta obter a chave API do .env ou ambiente (OpenAI ou Gemini)
-     */
     public function getApiKey()
     {
-        // 1. Tenta OpenAI
         $key = $this->getEnvVar('OPENAI_API_KEY');
         if ($key)
             return $key;
-
-        // 2. Tenta Gemini
         $key = $this->getEnvVar('GEMINI_API_KEY');
         if ($key)
             return $key;
-
         return null;
     }
 
@@ -216,14 +189,9 @@ class ImportService
      */
     public function saveImportedData($data)
     {
-        // Require Database if not already available (assuming singleton or autoload)
-        // If Database class is not imported at top, we might need fully qualified name or to add 'use'.
-        // Let's assume \App\Core\Database is available via autoloader, but better to check usage.
-
         $db = \App\Core\Database::getInstance()->getConnection();
 
         try {
-            // Se já houver transação, não iniciamos outra
             $inTransaction = $db->inTransaction();
             if (!$inTransaction) {
                 $db->beginTransaction();
@@ -232,9 +200,7 @@ class ImportService
             // 1. Processa Cliente
             $c = $data['cliente'] ?? [];
             if (empty($c['name'])) {
-                // Tenta recuperar se houver apenas 'orcamentos' e nenhum cliente na raiz...
-                // Mas vamos assumir erro por enquanto.
-                throw new \Exception("Nome do cliente não encontrado na resposta da IA.");
+                throw new \Exception("Nome do cliente não encontrado na resposta.");
             }
 
             $clientId = null;
@@ -251,7 +217,7 @@ class ImportService
             if ($existing) {
                 $clientId = $existing['id'];
             } else {
-                $stmtInsert = $db->prepare("INSERT INTO clientes (name, documento, cnpj, email, phone, address, responsavel, cargo, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+                $stmtInsert = $db->prepare("INSERT INTO clientes (name, documento, cnpj, email, phone, address, contact_name, contact_role, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
                 $stmtInsert->execute([
                     $c['name'],
                     $c['documento'] ?? '',
@@ -267,7 +233,6 @@ class ImportService
 
             // 2. Processa Orçamentos
             $orcamentos = $data['orcamentos'] ?? [];
-            // Fallback: se 'orcamentos' estiver vazio, mas a raiz tiver dados de orçamento
             if (empty($orcamentos) && isset($data['assunto'])) {
                 $orcamentos = [$data];
             }
@@ -275,44 +240,79 @@ class ImportService
             $lastOrcId = null;
 
             foreach ($orcamentos as $orc) {
+                // INSERT Orcamento (English Col Names, no user_id, no total)
+                // Includes 'procedures' now
                 $sqlOrc = "INSERT INTO orcamentos (
-                    client_id, user_id, status, total, servico_descricao, 
-                    assunto, garantia, validade, forma_pagamento, observacoes, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    client_id, status, subject, service_description, 
+                    warranty, validity, payment_terms, observations, procedures,
+                    date, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
                 $dateOrc = $orc['data_orcamento'] ?? date('Y-m-d');
                 if (strtotime($dateOrc) === false)
                     $dateOrc = date('Y-m-d');
 
+                $subject = $orc['assunto'] ?? 'Importado';
+                $servico_descricao = $orc['servico_descricao'] ?? '';
+                $procedimentos = $orc['procedimentos'] ?? '';
+                $observacoes = $orc['observacoes'] ?? '';
+
                 $stmtOrc = $db->prepare($sqlOrc);
                 $stmtOrc->execute([
                     $clientId,
-                    1, // User Adm (Default)
-                    $orc['status'] ?? 'Pendente',
-                    $orc['total'] ?? 0,
-                    $orc['servico_descricao'] ?? '',
-                    $orc['assunto'] ?? 'Importado',
+                    $orc['status'] ?? 'draft',
+                    $subject,
+                    $servico_descricao,
                     $orc['garantia'] ?? '',
                     $orc['validade'] ?? '',
                     $orc['forma_pagamento'] ?? '',
-                    $orc['observacoes'] ?? '',
-                    $dateOrc . ' 12:00:00'
+                    $observacoes,
+                    $procedimentos,
+                    $dateOrc
                 ]);
 
                 $lastOrcId = $db->lastInsertId();
 
-                // Itens
+                // 2.a Create/Update Valve Model (Template)
+                if (!empty($subject)) {
+                    $stmtCheckModel = $db->prepare("SELECT id FROM valve_models WHERE name = ?");
+                    $stmtCheckModel->execute([$subject]);
+                    $modelExists = $stmtCheckModel->fetch();
+
+                    if (!$modelExists) {
+                        $stmtModel = $db->prepare("INSERT INTO valve_models (name, service_description, procedures, observations, created_at) VALUES (?, ?, ?, ?, NOW())");
+                        $stmtModel->execute([
+                            $subject,
+                            $servico_descricao,
+                            $procedimentos,
+                            $observacoes
+                        ]);
+                    }
+                }
+
+                // Itens (Hierarchy V2: Group -> Zone -> Item)
                 if (!empty($orc['itens']) && is_array($orc['itens'])) {
-                    $sqlItem = "INSERT INTO orcamento_itens (orcamento_id, description, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?)";
+
+                    // 1. Create Default Group
+                    $stmtGroup = $db->prepare("INSERT INTO orcamento_grupos (orcamento_id, name) VALUES (?, ?)");
+                    $stmtGroup->execute([$lastOrcId, 'Geral']);
+                    $groupId = $db->lastInsertId();
+
+                    // 2. Create Default Zone
+                    $stmtZone = $db->prepare("INSERT INTO orcamento_zonas (grupo_id, name) VALUES (?, ?)");
+                    $stmtZone->execute([$groupId, 'Geral']);
+                    $zoneId = $db->lastInsertId();
+
+                    // 3. Insert Items linked to Zone
+                    $sqlItem = "INSERT INTO orcamento_itens (zona_id, name, quantity, labor_unit_cost) VALUES (?, ?, ?, ?)";
                     $stmtItem = $db->prepare($sqlItem);
 
                     foreach ($orc['itens'] as $item) {
                         $stmtItem->execute([
-                            $lastOrcId,
+                            $zoneId,
                             $item['description'] ?? 'Item',
                             $item['quantity'] ?? 1,
-                            $item['unit_price'] ?? 0,
-                            $item['total_price'] ?? 0
+                            $item['unit_price'] ?? 0 // Mapping unit_price to labor_unit_cost
                         ]);
                     }
                 }
@@ -328,7 +328,7 @@ class ImportService
             if (!$inTransaction && $db->inTransaction()) {
                 $db->rollBack();
             }
-            throw $e; // Re-throw para ser tratado quem chamou ou retornar array de erro
+            throw $e;
         }
     }
 }

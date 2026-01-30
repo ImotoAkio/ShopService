@@ -1,73 +1,92 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h3><i class="fa-solid fa-file-import me-2"></i> Importar Orçamentos Antigos (.docx)</h3>
+    <h3><i class="fa-solid fa-file-import me-2"></i> Importar Orçamentos via JSON</h3>
     <a href="<?= \BASE_URL ?>/orcamentos" class="btn btn-secondary">
         <i class="fa-solid fa-arrow-left me-2"></i> Voltar
     </a>
 </div>
 
 <div class="row">
-    <div class="col-md-5">
+    <div class="col-md-12">
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-primary text-white">
-                <h5 class="card-title mb-0"><i class="fa-solid fa-upload me-2"></i> Selecionar Arquivos</h5>
+                <h5 class="card-title mb-0"><i class="fa-solid fa-code me-2"></i> Colar JSON Estruturado</h5>
             </div>
             <div class="card-body">
-                <div id="drop-zone"
-                    class="border border-2 border-primary border-dashed rounded p-5 text-center bg-light"
-                    style="cursor: pointer; transition: all 0.2s;">
-                    <i class="fa-solid fa-cloud-arrow-up fa-3x text-primary mb-3"></i>
-                    <p class="fs-5 mb-1">Arraste arquivos .docx aqui</p>
-                    <p class="text-muted small">ou clique para selecionar</p>
-                    <input type="file" id="file-input" name="files[]" multiple accept=".docx" class="d-none">
+                <div class="alert alert-info">
+                    <i class="fa-solid fa-info-circle me-2"></i> <strong>Instrução:</strong>
+                    Cole o JSON gerado pelo processo externo no campo abaixo. O sistema criará o cliente e os orçamentos
+                    automaticamente.
                 </div>
 
-                <div class="mt-3 d-grid">
-                    <button id="btn-process" class="btn btn-success" disabled>
-                        <i class="fa-solid fa-play me-2"></i> Iniciar Importação
+                <div class="accordion mb-3 shadow-sm" id="accordionSchema">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingSchema">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#collapseSchema" aria-expanded="false" aria-controls="collapseSchema">
+                                <i class="fa-solid fa-code me-2"></i> Ver Estrutura JSON Esperada
+                            </button>
+                        </h2>
+                        <div id="collapseSchema" class="accordion-collapse collapse" aria-labelledby="headingSchema"
+                            data-bs-parent="#accordionSchema">
+                            <div class="accordion-body bg-light">
+                                <pre class="mb-0 small user-select-all" style="max-height: 300px;">{
+  "cliente": {
+    "name": "Nome do Cliente",
+    "documento": "CPF (opcional)",
+    "cnpj": "CNPJ (opcional)",
+    "email": "email@exemplo.com",
+    "phone": "Telefone",
+    "address": "Endereço Completo",
+    "responsavel": "Nome do Responsável"
+  },
+  "orcamentos": [
+    {
+      "assunto": "Título do Orçamento",
+      "status": "Pendente",
+      "total": 1000.00,
+      "data_orcamento": "YYYY-MM-DD",
+      "servico_descricao": "Descrição detalhada...",
+      "garantia": "Garantia (ex: 1 ano)",
+      "validade": "Validade (ex: 10 dias)",
+      "forma_pagamento": "Condições de Pagamento",
+      "procedimentos": "Procedimentos técnicos (opcional)",
+      "observacoes": "Observações adicionais...",
+      "itens": [
+        {
+          "description": "Nome do Item",
+          "quantity": 1,
+          "unit_price": 100.00,
+          "total_price": 100.00
+        }
+      ]
+    }
+  ]
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group mb-3">
+                    <label for="json-input" class="form-label">Conteúdo JSON:</label>
+                    <textarea id="json-input" class="form-control font-monospace" rows="15" placeholder='Cole seu JSON aqui...'></textarea>
+                </div>
+
+                <div class="d-flex justify-content-end">
+                    <button id="btn-process" class="btn btn-success btn-lg">
+                        <i class="fa-solid fa-play me-2"></i> Processar Importação
                     </button>
                 </div>
             </div>
         </div>
 
-        <div class="alert alert-info">
-            <i class="fa-solid fa-info-circle me-2"></i> <strong>Como funciona:</strong>
-            <ul class="mb-0 mt-2 ps-3">
-                <li>O sistema lerá o texto do arquivo Word.</li>
-                <li>Enviará para a IA (Gemini) extrair os dados.</li>
-                <li>Criará o Cliente (se não existir) e o Orçamento automaticamente.</li>
-            </ul>
-        </div>
-    </div>
-
-    <div class="col-md-7">
-        <div class="card shadow-sm h-100">
-            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0"><i class="fa-solid fa-list-check me-2"></i> Progresso</h5>
-                <span id="status-counter" class="badge bg-secondary">0 arquivos</span>
+        <div class="card shadow-sm" id="result-card" style="display: none;">
+            <div class="card-header bg-dark text-white">
+                <h5 class="card-title mb-0"><i class="fa-solid fa-terminal me-2"></i> Resultado</h5>
             </div>
-            <div class="card-body p-0">
-                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-                    <table class="table table-hover mb-0" id="files-table">
-                        <thead class="table-light sticky-top">
-                            <tr>
-                                <th style="width: 50%">Arquivo</th>
-                                <th style="width: 20%">Tamanho</th>
-                                <th style="width: 30%">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr id="empty-row">
-                                <td colspan="3" class="text-center text-muted py-5">
-                                    Nenhum arquivo selecionado.
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="card-footer bg-light" id="console-area" style="display:none;">
-                <pre id="log-output" class="mb-0 small text-muted"
-                    style="max-height: 150px; overflow-y: auto; font-size: 0.75rem;"></pre>
+            <div class="card-body">
+                <div id="result-message"></div>
+                <pre id="result-details" class="bg-light p-3 border rounded mt-3" style="display: none;"></pre>
             </div>
         </div>
     </div>
@@ -75,212 +94,71 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const dropZone = document.getElementById('drop-zone');
-        const fileInput = document.getElementById('file-input');
-        const filesTableBody = document.querySelector('#files-table tbody');
-        const emptyRow = document.getElementById('empty-row');
         const btnProcess = document.getElementById('btn-process');
-        const statusCounter = document.getElementById('status-counter');
-        const logOutput = document.getElementById('log-output');
-        const consoleArea = document.getElementById('console-area');
+        const jsonInput = document.getElementById('json-input');
+        const resultCard = document.getElementById('result-card');
+        const resultMessage = document.getElementById('result-message');
+        const resultDetails = document.getElementById('result-details');
 
-        let fileQueue = [];
+        btnProcess.addEventListener('click', async () => {
+            const jsonText = jsonInput.value.trim();
 
-        // Drag & Drop Events
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('bg-white');
-            dropZone.classList.remove('bg-light');
-        });
+            if (!jsonText) {
+                alert('Por favor, cole o JSON no campo indicado.');
+                return;
+            }
 
-        dropZone.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('bg-white');
-            dropZone.classList.add('bg-light');
-        });
+            try {
+                // Validate JSON syntax locally first
+                const jsonObj = JSON.parse(jsonText);
+            } catch (e) {
+                alert('Erro de sintaxe no JSON: ' + e.message);
+                return;
+            }
 
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('bg-white');
-            dropZone.classList.add('bg-light');
-            handleFiles(e.dataTransfer.files);
-        });
+            // Lock UI
+            btnProcess.disabled = true;
+            btnProcess.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Processando...';
+            resultCard.style.display = 'none';
 
-        dropZone.addEventListener('click', () => fileInput.click());
-
-        fileInput.addEventListener('change', () => {
-            handleFiles(fileInput.files);
-            fileInput.value = ''; // Reset to allow same file selection again
-        });
-
-        function handleFiles(files) {
-            if (files.length > 0) {
-                if (emptyRow) emptyRow.style.display = 'none';
-
-                Array.from(files).forEach(file => {
-                    if (file.name.endsWith('.docx') || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-                        // Avoid duplicates
-                        if (!fileQueue.some(f => f.name === file.name)) {
-                            fileQueue.push(file);
-                            addFileRow(file);
-                        }
-                    }
+            try {
+                const response = await fetch('<?= \BASE_URL ?>/orcamentos/import/process', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: jsonText // Send raw text/json
                 });
 
-                updateCounter();
-                btnProcess.disabled = false;
-            }
-        }
+                const contentType = response.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    const text = await response.text();
+                    throw new Error("Resposta inválida do servidor: " + text.substring(0, 100));
+                }
 
-        function addFileRow(file) {
-            const row = document.createElement('tr');
-            row.id = 'row-' + sanitizeId(file.name);
-            row.innerHTML = `
-            <td class="text-truncate" style="max-width: 200px;" title="${file.name}">
-                <i class="fa-regular fa-file-word text-primary me-2"></i> ${file.name}
-            </td>
-            <td>${formatBytes(file.size)}</td>
-            <td><span class="badge bg-secondary status-badge">Pendente</span></td>
-        `;
-            filesTableBody.appendChild(row);
-        }
+                const data = await response.json();
 
-        function formatBytes(bytes, decimals = 2) {
-            if (!+bytes) return '0 Bytes';
-            const k = 1024;
-            const dm = decimals < 0 ? 0 : decimals;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
-        }
-
-        function sanitizeId(name) {
-            return name.replace(/[^a-zA-Z0-9]/g, '_');
-        }
-
-        function updateCounter() {
-            statusCounter.innerText = `${fileQueue.length} arquivos`;
-        }
-
-        function addLog(msg) {
-            consoleArea.style.display = 'block';
-            logOutput.innerText += `> ${msg}\n`;
-            logOutput.scrollTop = logOutput.scrollHeight;
-        }
-
-        // Processing Logic
-        btnProcess.addEventListener('click', async () => {
-            btnProcess.disabled = true;
-            addLog('Iniciando processamento...');
-
-            let processedCount = 0;
-
-            const delay = ms => new Promise(res => setTimeout(res, ms));
-
-            for (const file of fileQueue) {
-                const rowId = 'row-' + sanitizeId(file.name);
-                const row = document.getElementById(rowId);
-                const badge = row.querySelector('.status-badge');
-
-                // Skip if already processed successfully (though we clear queue at end)
-                if (badge.classList.contains('bg-success')) continue;
-
-                badge.className = 'badge bg-primary status-badge';
-                badge.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando...';
-
-                let attempts = 0;
-                let maxRetries = 5;
-                let success = false;
-
-                while (attempts < maxRetries && !success) {
-                    try {
-                        addLog(`Processando: ${file.name} (Tentativa ${attempts + 1})`);
-
-                        // 1. Upload File
-                        const formData = new FormData();
-                        formData.append('file', file);
-
-                        const uploadResp = await fetch('<?= \BASE_URL ?>/orcamentos/import/upload', {
-                            method: 'POST',
-                            body: formData
-                        });
-
-                        const uploadJson = await uploadResp.json();
-
-                        if (!uploadJson.success) {
-                            throw new Error(uploadJson.message || 'Erro no upload');
-                        }
-
-                        badge.className = 'badge bg-info text-dark status-badge';
-                        badge.innerHTML = '<i class="fa-solid fa-brain"></i> IA Analisando...';
-
-                        // 2. Process with AI
-                        const processResp = await fetch('<?= \BASE_URL ?>/orcamentos/import/process', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ filename: uploadJson.filename })
-                        });
-
-                        const contentType = processResp.headers.get("content-type");
-                        if (!contentType || !contentType.includes("application/json")) {
-                            const text = await processResp.text();
-                            throw new Error("Resposta inválida do servidor: " + text.substring(0, 50) + "...");
-                        }
-
-                        const processJson = await processResp.json();
-
-                        if (processJson.success) {
-                            badge.className = 'badge bg-success status-badge';
-                            badge.innerHTML = '<i class="fa-solid fa-check"></i> Sucesso';
-                            addLog(`[OK] ${file.name}: ${processJson.message}`);
-                            success = true;
-                        } else {
-                            // Check for Rate Limit Error (429) in message
-                            if (processJson.message.includes('429') || processJson.message.includes('quota') || processJson.message.includes('insufficient_quota')) {
-                                throw new Error(processJson.message);
-                            }
-                            throw new Error(processJson.message || 'Erro na importação');
-                        }
-
-                    } catch (error) {
-                        console.error(error);
-
-                        if (error.message.includes('429') || error.message.includes('quota') || error.message.includes('insufficient_quota')) {
-                            const waitTime = 45; // seconds
-                            badge.className = 'badge bg-warning text-dark status-badge';
-                            badge.innerHTML = `<i class="fa-solid fa-clock"></i> Aguardando ${waitTime}s...`;
-                            addLog(`[LIMIT] ${error.message} - Aguardando ${waitTime}s...`);
-
-                            await delay(waitTime * 1000);
-                            attempts++;
-                        } else {
-                            badge.className = 'badge bg-danger status-badge';
-                            badge.innerHTML = 'Erro';
-                            badge.title = error.message;
-                            addLog(`[ERRO] ${file.name}: ${error.message}`);
-                            break; // Fatal error, move to next file
-                        }
+                resultCard.style.display = 'block';
+                if (data.success) {
+                    resultMessage.innerHTML = `<div class="alert alert-success"><i class="fa-solid fa-check-circle me-2"></i> ${data.message}</div>`;
+                    if (data.data) {
+                        resultDetails.style.display = 'block';
+                        resultDetails.innerText = JSON.stringify(data.data, null, 2);
+                    } else {
+                        resultDetails.style.display = 'none';
                     }
+                    // Clear input on success
+                    // jsonInput.value = ''; 
+                } else {
+                    resultMessage.innerHTML = `<div class="alert alert-danger"><i class="fa-solid fa-exclamation-triangle me-2"></i> ${data.message}</div>`;
+                    resultDetails.style.display = 'none';
                 }
 
-                if (!success) {
-                    badge.className = 'badge bg-danger status-badge';
-                    badge.innerHTML = 'Falhou';
-                }
-
-                processedCount++;
-
-                // Polite delay between successful files to avoid hitting burst limits
-                if (success) {
-                    addLog('Aguardando 10s para o próximo arquivo...');
-                    await delay(10000);
-                }
+            } catch (error) {
+                resultCard.style.display = 'block';
+                resultMessage.innerHTML = `<div class="alert alert-danger"><i class="fa-solid fa-bug me-2"></i> Erro na requisição: ${error.message}</div>`;
+            } finally {
+                btnProcess.disabled = false;
+                btnProcess.innerHTML = '<i class="fa-solid fa-play me-2"></i> Processar Importação';
             }
-
-            addLog('Processamento concluído.');
-            btnProcess.innerText = 'Concluído';
-            btnProcess.disabled = false;
-            fileQueue = []; // Clear queue
         });
     });
 </script>

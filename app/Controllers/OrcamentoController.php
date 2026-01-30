@@ -22,7 +22,14 @@ class OrcamentoController
         $db = Database::getInstance()->getConnection();
 
         $sql = "
-            SELECT o.*, c.name as client_name 
+            SELECT o.*, c.name as client_name,
+            (
+                SELECT COALESCE(SUM(i.labor_total_cost), 0)
+                FROM orcamento_itens i
+                JOIN orcamento_zonas z ON i.zona_id = z.id
+                JOIN orcamento_grupos g ON z.grupo_id = g.id
+                WHERE g.orcamento_id = o.id
+            ) as total
             FROM orcamentos o 
             JOIN clientes c ON o.client_id = c.id 
             WHERE 1=1
@@ -994,38 +1001,8 @@ class OrcamentoController
         require __DIR__ . '/../../views/layouts/layout.php';
     }
 
-    public function uploadImport()
-    {
-        header('Content-Type: application/json');
+    // uploadImport Removed - Deprecated
 
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            echo json_encode(['success' => false, 'message' => 'Invalid method']);
-            exit;
-        }
-
-        if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
-            echo json_encode(['success' => false, 'message' => 'Upload failed']);
-            exit;
-        }
-
-        $uploadDir = __DIR__ . '/../../storage/orcamentos_word';
-        if (!is_dir($uploadDir))
-            mkdir($uploadDir, 0777, true);
-
-        $fileName = basename($_FILES['file']['name']);
-        // Sanitize filename
-        $fileName = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $fileName);
-
-        // Add timestamp to avoid collisions
-        $targetFile = $uploadDir . '/' . uniqid() . '_' . $fileName;
-
-        if (move_uploaded_file($_FILES['file']['tmp_name'], $targetFile)) {
-            echo json_encode(['success' => true, 'filename' => basename($targetFile)]);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Failed to move file']);
-        }
-        exit;
-    }
 
     public function processImport()
     {
@@ -1036,60 +1013,26 @@ class OrcamentoController
             require_once __DIR__ . '/../Services/ImportService.php';
         }
 
-        $input = json_decode(file_get_contents('php://input'), true);
-        $filename = $input['filename'] ?? '';
+        $inputData = json_decode(file_get_contents('php://input'), true);
 
-        if (!$filename) {
-            echo json_encode(['success' => false, 'message' => 'No filename provided']);
+        if (!$inputData) {
+            echo json_encode(['success' => false, 'message' => 'JSON inválido ou vazio']);
             exit;
         }
 
-        $filePath = __DIR__ . '/../../storage/orcamentos_word/' . $filename;
-        if (!file_exists($filePath)) {
-            echo json_encode(['success' => false, 'message' => 'File not found']);
+        // Validate basic structure
+        if (!isset($inputData['cliente']) && !isset($inputData['orcamentos'])) {
+            echo json_encode(['success' => false, 'message' => 'JSON não segue o formato esperado (falta cliente ou orcamentos)']);
             exit;
         }
 
         $importService = new \App\Services\ImportService();
 
-        // 1. Extract Text
-        $text = $importService->extractTextFromDocx($filePath);
-        if (!$text) {
-            echo json_encode(['success' => false, 'message' => 'Failed to extract text from DOCX']);
-            exit;
-        }
-
-        // 2. AI Analysis
-        $apiKey = $importService->getApiKey();
-        if (!$apiKey) {
-            echo json_encode(['success' => false, 'message' => 'API Key (OpenAI or Gemini) not configured']);
-            exit;
-        }
-
-        $data = $importService->analyzeWithAI($text, $apiKey);
-
-        if (isset($data['error']) || !$data) {
-            echo json_encode(['success' => false, 'message' => 'AI Error: ' . ($data['error'] ?? 'Unknown')]);
-            exit;
-        }
-
-        // 3. Database Insertion
+        // Direct DB Insertion (Bypass AI)
         try {
-            $result = $importService->saveImportedData($data);
-
-            $successDir = __DIR__ . '/../../storage/orcamentos_word/processados/sucesso';
-            if (!is_dir($successDir))
-                mkdir($successDir, 0777, true);
-            rename($filePath, $successDir . '/' . $filename);
-
-            echo json_encode(['success' => true, 'message' => 'Importado com sucesso!']);
-
+            $result = $importService->saveImportedData($inputData);
+            echo json_encode(['success' => true, 'message' => 'Importado com sucesso!', 'data' => $result]);
         } catch (\Exception $e) {
-            $errorDir = __DIR__ . '/../../storage/orcamentos_word/processados/erro';
-            if (!is_dir($errorDir))
-                mkdir($errorDir, 0777, true);
-            rename($filePath, $errorDir . '/' . $filename);
-
             echo json_encode(['success' => false, 'message' => 'Erro ao Salvar: ' . $e->getMessage()]);
         }
         exit;

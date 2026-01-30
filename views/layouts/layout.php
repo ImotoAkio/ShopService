@@ -33,9 +33,7 @@
                 <a href="<?= BASE_URL ?>/dashboard" class="list-group-item list-group-item-action">
                     <i class="fa-solid fa-gauge me-2"></i> Dashboard
                 </a>
-                <a href="<?= BASE_URL ?>/ativos" class="list-group-item list-group-item-action">
-                    <i class="fa-solid fa-boxes-stacked me-2"></i> Ativos
-                </a>
+
 
                 <a href="<?= BASE_URL ?>/os" class="list-group-item list-group-item-action">
                     <i class="fa-solid fa-file-circle-plus me-2"></i> Ordens de Serviço
@@ -46,9 +44,7 @@
                 <a href="<?= BASE_URL ?>/orcamentos" class="list-group-item list-group-item-action">
                     <i class="fa-solid fa-file-invoice-dollar me-2"></i> Orçamentos
                 </a>
-                <a href="<?= BASE_URL ?>/orcamentos/import" class="list-group-item list-group-item-action">
-                    <i class="fa-solid fa-file-import me-2"></i> Migração (Importar)
-                </a>
+
                 <a href="<?= BASE_URL ?>/valves" class="list-group-item list-group-item-action">
                     <i class="fa-solid fa-faucet me-2"></i> Modelos VRP
                 </a>

@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  app:
+    image: shopservice-app:latest # You will build this in Portainer or push to a registry
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: shopservice_app
+    restart: always
+    environment:
+      - DB_HOST=database_mariadb
+      - DB_NAME=shopservice
+      - DB_USER=root
+      - DB_PASS=123456 # Replace with actual password if different
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - BASE_URL=https://app.shopservicevalvularedutora.com.br
+      - ASSET_URL=https://app.shopservicevalvularedutora.com.br
+    networks:
+      - echonet
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.shopservice.rule=Host(`app.shopservicevalvularedutora.com.br`)"
+      - "traefik.http.routers.shopservice.entrypoints=websecure"
+      - "traefik.http.routers.shopservice.tls.certresolver=myresolver" # Adjust if your resolver name is different
+      - "traefik.http.services.shopservice.loadbalancer.server.port=80"
+
+networks:
+  echonet:
+    external: true

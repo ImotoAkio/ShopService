@@ -23,11 +23,12 @@ spl_autoload_register(function ($class) {
 });
 
 // Basic Router
-$scriptName = dirname($_SERVER['SCRIPT_NAME']);
+// Basic Router
+$scriptName = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
-// Remove script directory from URI (for subdirectory hosting)
-if (strpos($requestUri, $scriptName) === 0 && $scriptName !== '/') {
+// Remove script directory from URI (for subdirectory hosting) - Case Insensitive Check
+if (stripos($requestUri, $scriptName) === 0 && $scriptName !== '/') {
     $uri = substr($requestUri, strlen($scriptName));
 } else {
     $uri = $requestUri;
@@ -42,20 +43,7 @@ if ($uri === '')
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
 $host = $_SERVER['HTTP_HOST'];
 
-$scriptName = $_SERVER['SCRIPT_NAME']; // e.g., /shopservice/public/index.php
-$scriptDir = dirname($scriptName);     // e.g., /shopservice/public
-
-// Normalize slashes
-$scriptDir = str_replace('\\', '/', $scriptDir);
-
-// Remove '/public' from the end if it exists (case-insensitive)
-if (substr(strtolower($scriptDir), -7) === '/public') {
-    $appRoot = substr($scriptDir, 0, -7);
-} else {
-    $appRoot = $scriptDir;
-}
-
-$appRoot = rtrim($appRoot, '/');
+$appRoot = $scriptName;
 $baseUrl = $protocol . $host . $appRoot;
 
 define('BASE_URL', $baseUrl);
