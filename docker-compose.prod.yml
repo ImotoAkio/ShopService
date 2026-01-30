@@ -6,25 +6,27 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: shopservice_app
-    restart: always
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.shopservice.rule=Host(`shopservice.echo.dev.br`)"
+        - "traefik.http.routers.shopservice.entrypoints=websecure"
+        - "traefik.http.routers.shopservice.tls.certresolver=myresolver"
+        - "traefik.http.services.shopservice.loadbalancer.server.port=80"
     environment:
       - DB_HOST=database_mariadb
       - DB_NAME=shopservice
       - DB_USER=root
-      - DB_PASS=123456 # Replace with actual password if different
+      - DB_PASS=Akio2604*
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - BASE_URL=https://shopservice.echo.dev.br
       - ASSET_URL=https://shopservice.echo.dev.br
     networks:
       - echonet
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.shopservice.rule=Host(`shopservice.echo.dev.br`)"
-      - "traefik.http.routers.shopservice.entrypoints=websecure"
-      - "traefik.http.routers.shopservice.tls.certresolver=myresolver" # Adjust if your resolver name is different
-      - "traefik.http.services.shopservice.loadbalancer.server.port=80"
 
 networks:
   echonet:
