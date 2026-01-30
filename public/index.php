@@ -36,27 +36,42 @@ if (stripos($requestUri, $scriptName) === 0 && $scriptName !== '/') {
 
 // Remove trailing slash
 $uri = rtrim($uri, '/');
-if ($uri === '')
-    $uri = '/';
+// 1. Protocol Detection (including Reverse Proxy)
+$protocol = 'http://';
+if (
+    (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+    $_SERVER['SERVER_PORT'] == 443 ||
+    (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+) {
+    $protocol = 'https://';
+}
 
-// Define Base URL using SCRIPT_NAME (Reliable for Aliases/Symlinks)
-$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+// 2. Host and App Root Detection
 $host = $_SERVER['HTTP_HOST'];
+$scriptName = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
+$appRoot = ($scriptName === '/' || $scriptName === '.') ? '' : $scriptName;
 
-$appRoot = $scriptName;
+// 3. Default Base URL
 $baseUrl = $protocol . $host . $appRoot;
 
-// Use Environment Variables if available (Fix for Proxy/Docker)
-if (getenv('BASE_URL')) {
-    define('BASE_URL', rtrim(getenv('BASE_URL'), '/'));
+// 4. Define Constants with ENV Override
+$envBaseUrl = getenv('BASE_URL');
+if ($envBaseUrl !== false && $envBaseUrl !== '') {
+    define('BASE_URL', rtrim($envBaseUrl, '/'));
 } else {
     define('BASE_URL', $baseUrl);
 }
 
-if (getenv('ASSET_URL')) {
-    define('ASSET_URL', rtrim(getenv('ASSET_URL'), '/'));
+$envAssetUrl = getenv('ASSET_URL');
+if ($envAssetUrl !== false && $envAssetUrl !== '') {
+    define('ASSET_URL', rtrim($envAssetUrl, '/'));
 } else {
-    define('ASSET_URL', $baseUrl . '/public');
+    // In Docker (Root): BASE_URL = https://domain.com -> Assets = https://domain.com/assets
+    // In XAMPP (Subdir): BASE_URL = http://localhost/app/public -> Assets = http://localhost/app/public/assets
+    // We assume assets are always in /assets relative to the public root.
+    // Note: The previous logic appended '/public' which caused double public in Docker. 
+    // If we are in public root, BASE_URL is the public root.
+    define('ASSET_URL', BASE_URL . '/assets');
 }
 
 
