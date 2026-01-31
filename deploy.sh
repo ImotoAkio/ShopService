@@ -48,8 +48,8 @@ fi
 
 docker stack deploy -c $COMPOSE_FILE $STACK_NAME
 
-    echo "[ERRO] Falha ao implantar a stack."
-    exit 1
+if [ $? -ne 0 ]; then
+    echo "[AVISO] Ocorreu um erro ou aviso no deploy da stack. Continuando para garantir a atualização..."
 fi
 
 # 5. Força a atualização do serviço para pegar a nova imagem
