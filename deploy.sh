@@ -48,10 +48,13 @@ fi
 
 docker stack deploy -c $COMPOSE_FILE $STACK_NAME
 
-if [ $? -ne 0 ]; then
     echo "[ERRO] Falha ao implantar a stack."
     exit 1
 fi
+
+# 5. Força a atualização do serviço para pegar a nova imagem
+echo "[INFO] Forçando atualização do serviço..."
+docker service update --force ${STACK_NAME}_app
 
 echo "========================================"
 echo "   Deploy Concluído com Sucesso!"
