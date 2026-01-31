@@ -1,5 +1,10 @@
 {
     "require": {
         "dompdf/dompdf": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
     }
 }
