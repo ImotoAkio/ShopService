@@ -49,7 +49,7 @@ if ($envAssetUrl !== false && $envAssetUrl !== '') {
 define('ASSET_URL', rtrim($envAssetUrl, '/'));
 } else {
 // Default assets location relative to BASE_URL
-define('ASSET_URL', BASE_URL . '/assets');
+define('ASSET_URL', BASE_URL);
 }
 
 // Debug Mode (Remove in production if needed, or secure behind param)

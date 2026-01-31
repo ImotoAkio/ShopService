@@ -27,6 +27,14 @@ services:
       - ASSET_URL=https://shopservice.echo.dev.br
     networks:
       - echonet
+    volumes:
+      - shopservice_uploads:/var/www/html/public/uploads
+      - shopservice_storage:/var/www/html/storage
+
+volumes:
+  shopservice_uploads:
+  shopservice_storage:
+
 
 networks:
   echonet:
